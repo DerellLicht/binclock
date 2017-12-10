@@ -16,10 +16,11 @@
 #include <time.h>
 #include <tchar.h>
 
+#include "common.h"
 #include "wcommon.h"
 #include "binclock.h"
 #include "bclk_elements.h"
-#include "regif.hpp"
+/* #include "regif.hpp" */
 
 static char szClassName[] = "derelict's binary clock";
 
@@ -88,11 +89,12 @@ static HWND hwndSecs ;
 static int cxClient = 0 ;
 static int cyClient = 0 ;
 
-static unsigned layout_method = 0 ;
-
 //***********************************************************************
-static unsigned bitmap_idx = 2 ;
-static unsigned bit_menu = 2 ;
+unsigned bitmap_idx = 2 ;
+unsigned bit_menu = 2 ;
+unsigned attr_on = RGB(128, 255, 0) ;
+unsigned attr_off = RGB(128, 64, 0) ;
+unsigned layout_method = 0 ;
 
 #define  NUM_ELEMENTS   9
 static bclock_element *element_list[NUM_ELEMENTS] ;
@@ -109,24 +111,21 @@ static bclock_element *element_list[NUM_ELEMENTS] ;
 //*******************************************************************************
 // - current object and color
 // - for BE_DRAWN, rememeber fgnd/bgnd colors
-registry_iface inireg("binclock") ;
-
-static unsigned crfg = RGB(128, 255, 0) ;
-static unsigned crbg = RGB(128, 64, 0) ;
-
-static void read_config_data(void)
-{
-   // - current object and sub-item
-   // - for BE_DRAWN, rememeber fgnd/bgnd colors
-   inireg.get_param("bitmap_idx", &bitmap_idx) ;
-   inireg.get_param("bit_menu", &bit_menu) ;
-   inireg.get_param("attr_on", &crfg) ;
-   inireg.get_param("attr_off", &crbg) ;
-   inireg.get_param("layout", &layout_method) ;
-
-   // wsprintf(tempstr, "bitmap_idx=%u", bitmap_idx) ;
-   // OutputDebugString(tempstr) ;
-}
+// registry_iface inireg("binclock") ;
+// 
+// static void read_config_data(void)
+// {
+//    // - current object and sub-item
+//    // - for BE_DRAWN, rememeber fgnd/bgnd colors
+//    inireg.get_param("bitmap_idx", &bitmap_idx) ;
+//    inireg.get_param("bit_menu", &bit_menu) ;
+//    inireg.get_param("attr_on", &attr_on) ;
+//    inireg.get_param("attr_off", &attr_off) ;
+//    inireg.get_param("layout", &layout_method) ;
+// 
+//    // wsprintf(tempstr, "bitmap_idx=%u", bitmap_idx) ;
+//    // OutputDebugString(tempstr) ;
+// }
 
 //*********************************************************************
 void load_bitmap_files(HWND hwnd)
@@ -265,7 +264,7 @@ void load_bitmap_files(HWND hwnd)
    //  What's more, the class now imposes ini-file field requirements
    //  into the application, which is VERY hard to maintain...
    //***********************************************************************
-   be_temp->set_element_attr(crfg, crbg) ;
+   be_temp->set_element_attr(attr_on, attr_off) ;
    element_list[idx++] = be_temp ;
 
    //  this is an insufficient test; the program may abort
@@ -373,7 +372,6 @@ static LRESULT APIENTRY MainProc (HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPa
 
 	switch (msg) {
    case WM_CREATE:
-      read_config_data() ;
       load_bitmap_files(hwnd) ;
 
       CreateStatic ("hours: ", LABEL_COL, HOURS_ROW, LABEL_LEN,  FIELD_HEIGHT, IDC_STATIC, hwnd, g_hInst);
@@ -493,7 +491,8 @@ static LRESULT APIENTRY MainProc (HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPa
                CheckMenuItem (hPopMenu, (UINT) element_list[bitmap_idx]->get_menu_handle(), MF_UNCHECKED);
                bitmap_idx = (unsigned) temp_idx ;
                CheckMenuItem (hPopMenu, (UINT) element_list[bitmap_idx]->get_menu_handle(), MF_CHECKED);
-               inireg.set_param("bitmap_idx", bitmap_idx) ;
+               // inireg.set_param("bitmap_idx", bitmap_idx) ;
+               save_cfg_file();
                found = 1 ;
                break;
             }
@@ -514,7 +513,8 @@ static LRESULT APIENTRY MainProc (HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPa
 
          case ID_TOGGLE_LAYOUT:
             layout_method ^= 1 ;
-            inireg.set_param("layout", layout_method) ;
+            // inireg.set_param("layout", layout_method) ;
+            save_cfg_file();
             InvalidateRect (hwnd, NULL, TRUE) ;
             break;
 
@@ -593,6 +593,8 @@ int APIENTRY WinMain (HINSTANCE hInst, HINSTANCE hPrev, LPSTR line, int CmdShow)
 {
    MSG msg;
    g_hInst = hInst;
+   load_exec_filename() ;  //  get our executable name
+   read_config_file();
 
    //  initialize windows
    InitApp (hInst);

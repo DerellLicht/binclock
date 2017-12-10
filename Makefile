@@ -1,7 +1,7 @@
 CFLAGS= -Wall -O3 -mwindows
 CFLAGS += -Wno-write-strings
 
-CSRC=binclock.cpp bclk_elements.cpp regif.cpp wcommon.cpp common_funcs.cpp
+CSRC=binclock.cpp bclk_elements.cpp config.cpp wcommon.cpp common_funcs.cpp
 
 OBJS = $(CSRC:.cpp=.o) bcrc.o
 
@@ -21,18 +21,17 @@ clean:
 dist:
 	rm -f *.zip
 	zip binclock.zip binclock.exe *.bmp copying
-	zip binclock.src.zip makefile *.cpp *.h *.hpp *.ini *.rc *.ico *.bmp copying
 																			
 lint:
 	cmd /C "c:\lint9\lint-nt +v -width(160,4) -ic:\lint9 mingw.lnt -os(_lint.tmp) lintdefs.cpp $(CSRC)"
 
 depend: 
-	makedepend *.cpp
+	makedepend $(CSRC)
 
 #**************************************************************
 #  build rules for executables                           
 #**************************************************************
-binclock.exe: $(OBJS)
+$(BINS): $(OBJS)
 	g++ $(CFLAGS) -s $^ -o $@ -lgdi32 -lcomctl32
 
 #**************************************************************
@@ -43,8 +42,8 @@ bcrc.o: binclock.rc binclock.h
 
 # DO NOT DELETE
 
-bclk_elements.o: bclk_elements.h common.h regif.hpp
-binclock.o: wcommon.h binclock.h bclk_elements.h regif.hpp
-common_funcs.o: common.h
-regif.o: common.h regif.hpp
+binclock.o: common.h wcommon.h binclock.h bclk_elements.h
+bclk_elements.o: common.h binclock.h bclk_elements.h
+config.o: common.h binclock.h
 wcommon.o: wcommon.h
+common_funcs.o: common.h

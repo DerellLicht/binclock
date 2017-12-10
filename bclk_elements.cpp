@@ -11,10 +11,10 @@
 #include <windows.h>
 #include <string.h>
 
-#include "bclk_elements.h"
 #include "common.h"
-#include "regif.hpp"
-extern registry_iface inireg ;
+#include "binclock.h"
+#include "bclk_elements.h"
+// extern registry_iface inireg ;
 
 static unsigned be_object_num = 0 ;
 
@@ -192,9 +192,8 @@ COLORREF bclock_element::select_color(COLORREF init_attr)
 //  For BE_DRAWN, which has SetColor functions in the
 //  color-selection menu, this function needs to act differently;
 //  hmmm....
-//  I guess for SetColor functions, this should call 
-//  select_color(), set the appropriate attribute, then
-//  return -1 so caller doesn't do anything else...
+//  I guess for SetColor functions, this should call select_color(), 
+//  set the appropriate attribute, then return -1 so caller doesn't do anything else...
 //  
 //  Not a very clean solution; the user of the class will have
 //  a HARD time anticipating how this function works.
@@ -210,21 +209,25 @@ int bclock_element::get_menu_id(unsigned menu_idx)
    if ((flags & BE_DRAWN)  &&  curr_element > 1) {
       if (curr_element == 2) {   //  set foreground color
          attr_high = select_color(attr_high) ;
-         inireg.set_param("attr_on", (unsigned) attr_high) ;
+         attr_on = attr_high ;
+         // inireg.set_param("attr_on", (unsigned) attr_high) ;
       } else
       if (curr_element == 3) {   //  set background color
          attr_low = select_color(attr_low) ;
-         inireg.set_param("attr_off", (unsigned) attr_low) ;
+         attr_off = attr_low ;
+         // inireg.set_param("attr_off", (unsigned) attr_low) ;
       } 
-//       wsprintf(errstr, "curr_element=%u (mi=%u, mc=%u)\n", curr_element, menu_idx, menu_code) ;
-//       OutputDebugString(errstr) ;
+//       syslog("curr_element=%u (mi=%u, mc=%u)\n", curr_element, menu_idx, menu_code) ;
 //       inireg.set_param("bit_menu", (unsigned) curr_element) ;
+      save_cfg_file();
       return -1;
    } 
    if (flags & BE_PAIRS) 
       off_idx = curr_element - 1 ;
    //  this needs to store the actual index into the array...
-   inireg.set_param("bit_menu", (unsigned) curr_element) ;
+   // inireg.set_param("bit_menu", (unsigned) curr_element) ;
+   bit_menu = curr_element ;
+   save_cfg_file();
    return object_code ;
 }
 
