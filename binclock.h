@@ -1,4 +1,5 @@
-#define BCICON       300
+#define  BCICON         300
+#define  IDC_STATIC     1020
 
 //  binclock.cpp
 extern unsigned bitmap_idx ;

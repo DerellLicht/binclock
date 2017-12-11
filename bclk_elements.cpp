@@ -9,14 +9,15 @@
 //***********************************************************************
 
 #include <windows.h>
-#include <string.h>
+// #include <string.h>
 
 #include "common.h"
 #include "binclock.h"
 #include "bclk_elements.h"
-// extern registry_iface inireg ;
 
 static unsigned be_object_num = 0 ;
+
+//lint -esym(1762, bclock_element::Box, bclock_element::Solid_Rect)
 
 //***********************************************************************
 unsigned bclock_element::next_led_color(void)
@@ -45,18 +46,34 @@ unsigned bclock_element::next_led_color(void)
 
 //***********************************************************************
 bclock_element::bclock_element(HINSTANCE g_hInst, char *name, unsigned width, 
-   unsigned be_flags, int mask_index, unsigned off_index, unsigned start_element)
+   unsigned be_flags, int mask_index, unsigned off_index, unsigned start_element) :
+   bm_name(0),
+   el_width(width),
+   el_height(0),
+   flags(be_flags),
+   mask_idx(mask_index),
+   off_idx(off_index),
+   x_offset(0),
+   y_offset(0),
+   skip_elements(0),
+   num_elements(0),
+   curr_element(start_element),
+   hSpriteBitmap(NULL),
+   hdlMenu(0),
+   menu_code(0),
+   object_code(0),
+   color_menu_str(NULL),
+   menu_str(NULL),
+   attr_lhigh(0),
+   attr_llow (0),
+   attr_high(0),
+   attr_low (0)
 {
    BITMAP bm;
-   flags = be_flags ;
-   el_width = width ;
-   mask_idx = mask_index ;
-   curr_element = start_element ;
-   off_idx = off_index ;
-   x_offset = 0 ;
-   y_offset = 0 ;
    object_code = be_object_num++ ;
-   menu_hdl = 0 ;
+
+   bm_name  = (char *) new char[IMG_FNAME_LEN+1] ;
+   menu_str = (char *) new char[MENU_STR_LEN+1] ;
 
    //  if no filename provided, assume BE_DRAWN format
    //  i.e., the "led" will be a drawn image, not an image-file element
@@ -83,43 +100,55 @@ bclock_element::bclock_element(HINSTANCE g_hInst, char *name, unsigned width,
       hSpriteBitmap = (HBITMAP) LoadImage (g_hInst, bm_name, 
          IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE | LR_CREATEDIBSECTION);
       if (hSpriteBitmap == NULL) {
-         wsprintf(errstr, "%s: LoadImage: %s\n", bm_name, get_system_message()) ;
-         OutputDebugString(errstr) ;
+         syslog("%s: LoadImage: %s\n", bm_name, get_system_message()) ;
       }
 
       if (GetObject ((HGDIOBJ) hSpriteBitmap, sizeof (BITMAP), &bm) == 0) {
-         wsprintf(errstr, "%s: GetObject: %s\n", bm_name, get_system_message()) ;
-         OutputDebugString(errstr) ;
+         syslog("%s: GetObject: %s\n", bm_name, get_system_message()) ;
       }
       el_height = bm.bmHeight ;
-      if (el_width == 0) 
+      if (el_width == 0) {
          el_width = bm.bmHeight ;
-      num_elements = bm.bmWidth / el_width ;
+      }
+      num_elements = (unsigned) bm.bmWidth / el_width ;
    }
 
-   // wsprintf(errstr, "%s: loaded, width=%u, elements=%u\n", bm_name, el_width, num_elements) ;
-   // OutputDebugString(errstr) ;
+   // syslog("%s: loaded, width=%u, elements=%u\n", bm_name, el_width, num_elements) ;
    color_menu_str = new char *[num_elements] ;
    unsigned j ;
    for (j=0; j<num_elements; j++) {
-      //  use errstr as temp buffer
-      wsprintf(errstr, "color %u", j) ;
-      color_menu_str[j] = new char[strlen(errstr)+1] ;
-      strcpy(color_menu_str[j], errstr) ;
+      char colorstr[20];   //  temp buffer
+      wsprintf(colorstr, "color %u", j) ;
+      color_menu_str[j] = new char[strlen(colorstr)+1] ;
+      strcpy(color_menu_str[j], colorstr) ;
    }
 
    skip_elements = new u8[num_elements] ;
    ZeroMemory(skip_elements, num_elements) ;
-
-   skip_elements[off_idx] = 1 ;
-   if (mask_idx >= 0)
-      skip_elements[mask_idx] = 1 ;
+   if (off_idx >= num_elements  ||  (mask_idx > 0  &&  (unsigned) mask_idx >= num_elements)) {
+      syslog("ERROR: invalid elements: num_elements=%u, off_idx=%u, mask_idx=%d\n", 
+         num_elements, off_idx, mask_idx);
+   }
+   else {
+      skip_elements[off_idx] = 1 ;
+      if (mask_idx >= 0) {
+         skip_elements[mask_idx] = 1 ; //lint !e661 !e662
+      }
+   }
 }
 
 //***********************************************************************
 bclock_element::~bclock_element()
 {
    DeleteObject ((HGDIOBJ) hSpriteBitmap);
+   hSpriteBitmap = NULL ;
+   delete[] bm_name ;
+   delete[] menu_str ;
+   delete[] skip_elements ;
+   hdlMenu = NULL ;
+   //  how do I free color_menu_str[] ???
+//lint -esym(1740, bclock_element::color_menu_str)
+
 }
 
 //******************************************************************
@@ -146,8 +175,8 @@ void bclock_element::set_image_offsets(int dx, int dy)
 unsigned bclock_element::add_menu_data(unsigned umenu_code, char *mstr)
 {
    menu_code = umenu_code ;
-   strncpy(menu_str, mstr, sizeof(menu_str)) ;
-   menu_str[sizeof(menu_str) - 1] = 0 ; //  make sure line is NULL-term
+   strncpy(menu_str, mstr, MENU_STR_LEN) ;
+   menu_str[MENU_STR_LEN] = 0 ; //  make sure line is NULL-term
    umenu_code += num_elements ;  //  reserve menu/message numbers for all colors
    return umenu_code ;
 }
@@ -244,7 +273,7 @@ void bclock_element::mask_the_source(HDC hdc)
 {
    if (mask_idx < 0)
       return ;
-   unsigned xmask  = mask_idx * el_width  ;
+   unsigned xmask  = (unsigned) mask_idx * el_width  ;
 
    HDC hdcMem = CreateCompatibleDC (hdc);
    SelectObject (hdcMem, (HGDIOBJ) hSpriteBitmap);
@@ -257,8 +286,7 @@ void bclock_element::mask_the_source(HDC hdc)
 
       unsigned xsrc = j * el_width  ;
       if (!BitBlt (hdcMem, xsrc, 0, el_width, el_height, hdcMem, xmask, 0, SRCINVERT)) {
-         wsprintf(errstr, "BitBlt (source mask): %s", get_system_message()) ;
-         OutputDebugString(errstr) ;
+         syslog("BitBlt (source mask): %s", get_system_message()) ;
       }
    }
 
@@ -266,8 +294,6 @@ void bclock_element::mask_the_source(HDC hdc)
 }
 
 //******************************************************************
-#define  IDC_STATIC        1020
-
 HMENU bclock_element::build_options_menu(void)
 {
    unsigned j ;
@@ -290,7 +316,7 @@ HMENU bclock_element::build_options_menu(void)
       // AppendMenu(hMenuOptions, MF_STRING, IDC_STATIC, mmsg) ;
       AppendMenu(hMenuOptions, MF_STRING, menu_code+j, color_menu_str[j]) ;
    }
-   menu_hdl = hMenuOptions ;
+   hdlMenu = hMenuOptions ;
    return hMenuOptions;
 }
 
@@ -343,7 +369,7 @@ void bclock_element::Box(HDC hdc, int x0, int y0, int x1, int y1, unsigned style
       SetPixel(hdc, x0, y1, fgattr) ;
       break;
 
-   }
+   }  //lint !e744
 
    if (hPen != 0) {
       SelectObject(hdc, GetStockObject(BLACK_PEN)) ;  //  deselect my pen
@@ -371,9 +397,8 @@ void bclock_element::draw_frame(HDC hdc, unsigned x, unsigned y, unsigned on_nof
    unsigned xl = x ;
    unsigned yt = y ;
 
-   // wsprintf(errstr, "x=%u, y=%u, th=Tu, pad=%u, fw=%u\n",
+   // syslog("x=%u, y=%u, th=Tu, pad=%u, fw=%u\n",
    //    x, y, fthickness, fpadding) ;
-   // OutputDebugString(errstr) ;
    // unsigned xr = x + get_frame_width() ;
    // unsigned yb = y + get_frame_height() ;
    // unsigned frame_edge = fthickness + fpadding ;
@@ -410,8 +435,6 @@ void bclock_element::draw_sprite(HDC hdc, unsigned on_noff, unsigned xidest, uns
    // ysrc  = srow * el_height ;
    xdest = (int) xidest + x_offset ;
    ydest = (int) yidest + y_offset ;
-   // wsprintf(errstr, "mask_idx=%d\n", mask_idx) ;
-   // OutputDebugString(errstr) ;
 
    hdcMem = CreateCompatibleDC (hdc);
    SelectObject (hdcMem, (HGDIOBJ) hSpriteBitmap);
@@ -422,21 +445,18 @@ void bclock_element::draw_sprite(HDC hdc, unsigned on_noff, unsigned xidest, uns
    if (mask_idx < 0) {
        if (!BitBlt (hdc, xdest, ydest, el_width, el_height, hdcMem, xsrc, 0, SRCCOPY)) {
           // Statusbar_ShowMessage (get_system_message());
-          wsprintf(errstr, "BitBlt (copy): %s", get_system_message()) ;
-          OutputDebugString(errstr) ;
+          syslog("BitBlt (copy): %s", get_system_message()) ;
        }
    }
    else {
-      xmask  = mask_idx * el_width  ;
+      xmask  = (uint) mask_idx * el_width  ;
       if (!BitBlt (hdc, xdest, ydest, el_width, el_height, hdcMem, xmask, 0, SRCAND)) {
          // Statusbar_ShowMessage (get_system_message());
-         wsprintf(errstr, "BitBlt (mask): %s", get_system_message()) ;
-         OutputDebugString(errstr) ;
+         syslog("BitBlt (mask): %s", get_system_message()) ;
       }
       if (!BitBlt (hdc, xdest, ydest, el_width, el_height, hdcMem, xsrc, 0, SRCPAINT)) {
          // Statusbar_ShowMessage (get_system_message());
-         wsprintf(errstr, "BitBlt (image): %s", get_system_message()) ;
-         OutputDebugString(errstr) ;
+         syslog("BitBlt (image): %s", get_system_message()) ;
       }
    }
    DeleteDC (hdcMem);

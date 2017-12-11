@@ -2,26 +2,3 @@
 
 BCICON ICON    bclock.ico
 
-// ID_TRAYMENU MENU
-// BEGIN
-//     POPUP "&TrayMenu"
-//         BEGIN
-//         MENUITEM "derelict's binary clock", ID_UNUSED
-//         MENUITEM SEPARATOR
-//         MENUITEM "   See system menu", ID_UNUSED
-//         MENUITEM "   for more options", ID_UNUSED
-//         // MENUITEM "Large LEDs",   ID_LAMPS0
-//         // MENUITEM "Square lamps", ID_LAMPS1
-//         // MENUITEM "Small lamps",  ID_LAMPS2
-//         // MENUITEM "Ceramic lamps",  ID_LAMPS3
-//         // MENUITEM "Accent balls",  ID_LAMPS4
-//         // MENUITEM "Glass marbles",  ID_LAMPS5
-//         MENUITEM SEPARATOR
-//         // MENUITEM "Select next color", ID_NEXT_COLOR
-//         // MENUITEM "Toggle time format", ID_TOGGLE_LAYOUT
-//         MENUITEM "Open main window", ID_TRAYOPEN
-//         MENUITEM "Minimize main window", ID_MINIMIZE
-//         MENUITEM "Exit from program", ID_TRAYEXIT
-//         END
-// END
-

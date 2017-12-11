@@ -13,9 +13,12 @@
 
 #include "wcommon.h"
 
-//********************************************************
-// A function to set a control's text to
-//     the default font
+//************************************************************
+// A function to set a control's text to the default font
+//************************************************************
+//lint -esym(714, SetDefaultFont)
+//lint -esym(759, SetDefaultFont)
+//lint -esym(765, SetDefaultFont)
 int SetDefaultFont (int identifier, HWND hwnd)
 {
    SendDlgItemMessage (hwnd,
@@ -25,7 +28,11 @@ int SetDefaultFont (int identifier, HWND hwnd)
    return 0;
 }
 
+//************************************************************
 // A function to create static text
+//lint -esym(714, CreateStatic)
+//lint -esym(759, CreateStatic)
+//lint -esym(765, CreateStatic)
 HWND CreateStatic (char *tempText, int x, int y, int width, int height,
    int identifier, HWND hwnd, HINSTANCE g_hInst)
 {
@@ -40,7 +47,11 @@ HWND CreateStatic (char *tempText, int x, int y, int width, int height,
    return hStaticTemp;
 }
 
+//************************************************************
 // A function to create a textarea
+//lint -esym(714, CreateEdit)
+//lint -esym(759, CreateEdit)
+//lint -esym(765, CreateEdit)
 HWND CreateEdit (char *tempText, int x, int y, int width, int height,
    int identifier, HWND hwnd, HINSTANCE g_hInst)
 {
@@ -55,7 +66,11 @@ HWND CreateEdit (char *tempText, int x, int y, int width, int height,
    return hEditTemp;
 }
 
+//************************************************************
 // A function to create a textarea
+//lint -esym(714, CreateText)
+//lint -esym(759, CreateText)
+//lint -esym(765, CreateText)
 HWND CreateText(char *tempText, int x, int y, int width, int height,
    int identifier, HWND hwnd, HINSTANCE g_hInst)
 {
@@ -70,7 +85,11 @@ HWND CreateText(char *tempText, int x, int y, int width, int height,
 
    return hEditTemp;
 }
+//************************************************************
 // A function to create a button
+//lint -esym(714, CreateButton)
+//lint -esym(759, CreateButton)
+//lint -esym(765, CreateButton)
 HWND CreateButton (char *tempText, int x, int y, int width, int height,
    int identifier, HWND hwnd, HINSTANCE g_hInst)
 {
@@ -85,7 +104,11 @@ HWND CreateButton (char *tempText, int x, int y, int width, int height,
    return hButtonTemp;
 }
 
+//************************************************************
 // A function to create a raised area
+//lint -esym(714, CreateIsland)
+//lint -esym(759, CreateIsland)
+//lint -esym(765, CreateIsland)
 HWND CreateIsland (char *tempText, int x, int y, int width, int height,
    int identifier, HWND hwnd, HINSTANCE g_hInst) 
 {
@@ -100,7 +123,11 @@ HWND CreateIsland (char *tempText, int x, int y, int width, int height,
    return hStaticTemp;
 }
 
+//************************************************************
 // A function to create a checkbox
+//lint -esym(714, CreateCheck)
+//lint -esym(759, CreateCheck)
+//lint -esym(765, CreateCheck)
 HWND CreateCheck (char *tempText, int x, int y, int width, int height,
    int identifier, HWND hwnd, HINSTANCE g_hInst)
 {

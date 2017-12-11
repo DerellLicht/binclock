@@ -1,16 +1,14 @@
 //*********************************************************************
-//  cdtimer.cpp - Countdown timer using slider for setting
+//  binclock.cpp - Windows binary clock
 //  
 //  Written by:   Daniel D. Miller
 //  
 //  Last Update:  03/07/03 12:20
 //  
-//  compile with makefile
 //*********************************************************************
 
 #include <windows.h>
-#include <commctrl.h>			  //  link to comctl32.lib
-#include <string.h>
+// #include <commctrl.h>          //  link to comctl32.lib
 #include <math.h>
 #include <sys/stat.h>
 #include <time.h>
@@ -20,11 +18,9 @@
 #include "wcommon.h"
 #include "binclock.h"
 #include "bclk_elements.h"
-/* #include "regif.hpp" */
 
-static char szClassName[] = "derelict's binary clock";
+static char const szClassName[] = "derelict's binary clock";
 
-#define  ID_TRAYMENU       2000
 #define  ID_TRAYOPEN       2001
 #define  ID_MINIMIZE       2002
 #define  ID_TOGGLE_LAYOUT  2003
@@ -35,16 +31,15 @@ static char szClassName[] = "derelict's binary clock";
 
 #define  ID_LAMPS0         3000
 
-#define  IDC_STATIC        1020
+#define  IDT_TIMER         201
 
-#define  IDT_TIMER   201
-UINT  timerID = 0 ;
+static UINT timerID = 0 ;
 
 //*********************************************************************
 // variables
 
 // HWND hwnd;
-HINSTANCE g_hInst;
+static HINSTANCE g_hInst;
 static NOTIFYICONDATA NotifyIconData;
 
 //*************************************
@@ -86,8 +81,11 @@ static HWND hwndSecs ;
 
 // function prototypes
 
-static int cxClient = 0 ;
-static int cyClient = 0 ;
+// static int cxClient = 0 ;
+// static int cyClient = 0 ;
+
+#define  NUM_ELEMENTS   9
+static bclock_element *element_list[NUM_ELEMENTS] ;
 
 //***********************************************************************
 unsigned bitmap_idx = 2 ;
@@ -96,39 +94,8 @@ unsigned attr_on = RGB(128, 255, 0) ;
 unsigned attr_off = RGB(128, 64, 0) ;
 unsigned layout_method = 0 ;
 
-#define  NUM_ELEMENTS   9
-static bclock_element *element_list[NUM_ELEMENTS] ;
-// static HMENU menu_handles[NUM_ELEMENTS] ;
-
-//*******************************************************************************
-//  well, for some reason, INI files don't work at all in this situation.
-//  GetPrivateProfileString() doesn't return the strings in the file
-//  at all, even though the file is there and corrent.
-//  Okay, I see what the issue is.  
-//  First, the section (AppName) entry has to exist in the file.  
-//  Second, the file is *not* created if it does not already exist!!
-//  I thought it was... 
-//*******************************************************************************
-// - current object and color
-// - for BE_DRAWN, rememeber fgnd/bgnd colors
-// registry_iface inireg("binclock") ;
-// 
-// static void read_config_data(void)
-// {
-//    // - current object and sub-item
-//    // - for BE_DRAWN, rememeber fgnd/bgnd colors
-//    inireg.get_param("bitmap_idx", &bitmap_idx) ;
-//    inireg.get_param("bit_menu", &bit_menu) ;
-//    inireg.get_param("attr_on", &attr_on) ;
-//    inireg.get_param("attr_off", &attr_off) ;
-//    inireg.get_param("layout", &layout_method) ;
-// 
-//    // wsprintf(tempstr, "bitmap_idx=%u", bitmap_idx) ;
-//    // OutputDebugString(tempstr) ;
-// }
-
 //*********************************************************************
-void load_bitmap_files(HWND hwnd)
+static void load_bitmap_files(HWND hwnd)
 {
    HDC hdc = GetDC(hwnd) ;
    unsigned menu_code = ID_LAMPS0 ;
@@ -164,7 +131,7 @@ void load_bitmap_files(HWND hwnd)
    be_temp = new bclock_element(g_hInst, "square2.bmp", 0, BE_LINEAR, -1, 0, start_element);
    be_temp->set_image_offsets(0, 2) ;
    menu_code = be_temp->add_menu_data(menu_code, "Square lamps") ;
-   static char *square_colors[10] = {
+   static char * const square_colors[10] = {
       "grey", "dark purple", "cyan", "green", "blue", "orange", "magenta", "purple", "red", "yellow" } ;
    for (j=0; j<10; j++)
       be_temp->add_color_menu_str(j, square_colors[j]) ;
@@ -174,7 +141,7 @@ void load_bitmap_files(HWND hwnd)
    be_temp = new bclock_element(g_hInst, "balls.bmp", 0, BE_LINEAR, 0, 1, start_element);
    be_temp->mask_the_source(hdc) ;
    menu_code = be_temp->add_menu_data(menu_code, "Small lamps") ;
-   static char *balls_colors[7] = {
+   static char * const balls_colors[7] = {
       " ", " ", "blue", "green", "orange", "yellow", "red" } ;
    for (j=0; j<7; j++)
       be_temp->add_color_menu_str(j, balls_colors[j]) ;
@@ -185,7 +152,7 @@ void load_bitmap_files(HWND hwnd)
    be_temp->set_image_offsets(-5, -5) ;
    be_temp->mask_the_source(hdc) ;
    menu_code = be_temp->add_menu_data(menu_code, "Ceramic lamps") ;
-   static char *ceramics_colors[] = {
+   static char * const ceramics_colors[] = {
       " ", " ", "purple", "ecru", "verdant", "green", "tan", "fuchsia", "purple2", "red", "cyan", "yellow", 0 } ;
    for (j=0; ceramics_colors[j] != 0; j++)
       be_temp->add_color_menu_str(j, ceramics_colors[j]) ;
@@ -195,7 +162,7 @@ void load_bitmap_files(HWND hwnd)
    be_temp = new bclock_element(g_hInst, "accent.bmp", 0, BE_LINEAR, 0, 1, start_element);
    be_temp->mask_the_source(hdc) ;
    menu_code = be_temp->add_menu_data(menu_code, "Accent balls") ;
-   static char *accent_colors[] = {
+   static char * const accent_colors[] = {
       " ", " ", "green", "cyan", "blue", "pink", "red", "brown", "orange", "yellow", 0 } ;
    for (j=0; accent_colors[j] != 0; j++)
       be_temp->add_color_menu_str(j, accent_colors[j]) ;
@@ -205,7 +172,7 @@ void load_bitmap_files(HWND hwnd)
    be_temp = new bclock_element(g_hInst, "marbles.bmp", 0, BE_LINEAR, 0, 1, start_element);
    be_temp->mask_the_source(hdc) ;
    menu_code = be_temp->add_menu_data(menu_code, "Glass marbles") ;
-   static char *marble_colors[] = {
+   static char * const marble_colors[] = {
       " ", " ", "grey", "blue", "cyan", "yellow", "green", "purple", "red", 0 } ;
    for (j=0; marble_colors[j] != 0; j++)
       be_temp->add_color_menu_str(j, marble_colors[j]) ;
@@ -228,7 +195,7 @@ void load_bitmap_files(HWND hwnd)
    be_temp = new bclock_element(g_hInst, "lights.bmp", 0, BE_LINEAR, 0, 1, start_element);
    be_temp->mask_the_source(hdc) ;
    menu_code = be_temp->add_menu_data(menu_code, "Glass lights") ;
-   static char *light_colors[] = {
+   static char * const light_colors[] = {
       " ", "blue", "red", "brown", "orange", "yellow", "green", "cyan", "blue", "fuchsia", 0 } ;
    for (j=0; light_colors[j] != 0; j++)
       be_temp->add_color_menu_str(j, light_colors[j]) ;
@@ -237,9 +204,8 @@ void load_bitmap_files(HWND hwnd)
                            //                 width         mask offset start_el
    be_temp = new bclock_element(g_hInst, NULL, 14, BE_DRAWN, 0,   0,     0);
    menu_code = be_temp->add_menu_data(menu_code, "Bound Boxes") ;
-   static char *drawn_colors[] = { " ", "select this element", "change ON color", "change OFF color", 0 } ; 
+   static char * const drawn_colors[] = { " ", "select this element", "change ON color", "change OFF color", 0 } ; 
    for (j=0; drawn_colors[j] != 0; j++) {
-      // OutputDebugString(drawn_colors[j]) ;
       be_temp->add_color_menu_str(j, drawn_colors[j]) ;
    }
    //***********************************************************************
@@ -269,14 +235,14 @@ void load_bitmap_files(HWND hwnd)
 
    //  this is an insufficient test; the program may abort
    //  before we can get to this test, if overrun occurs...
-   if (idx > NUM_ELEMENTS) {
+   if (idx > NUM_ELEMENTS) {  //lint !e774
       wsprintf(msg, "too many elements created (%u vs %u)\n", idx, NUM_ELEMENTS) ;
       OutputDebugString(msg) ;
       MessageBox(NULL, msg, "DANGER!!", MB_OK) ;
    }
 
    ReleaseDC (hwnd, hdc) ;
-}
+}  //lint !e438
 
 //*********************************************************************
 static void draw_horiz_binary_time(HDC hdc, unsigned row, unsigned tvalue)
@@ -305,7 +271,7 @@ static void draw_bcd_time(HDC hdc, unsigned row, unsigned time_seg, unsigned dra
 }
 
 //*********************************************************************
-void update_timer_count(HWND hwnd)
+static void update_timer_count(HWND hwnd)
 {
    time_t ttm ;
    struct tm *gtm ;
@@ -361,7 +327,7 @@ void update_timer_count(HWND hwnd)
 //*********************************************************************
 // HMENU hMenu;
 // HMENU hsMenu;
-HMENU hPopMenu = 0 ;
+static HMENU hPopMenu = 0 ;
 // #define IDM_SEP   32783
 
 static LRESULT APIENTRY MainProc (HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -408,11 +374,11 @@ static LRESULT APIENTRY MainProc (HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPa
       break;
 
    case WM_SIZE:
-      cxClient = LOWORD (lParam) ;
-      cyClient = HIWORD (lParam) ;
+      // cxClient = LOWORD (lParam) ;
+      // cyClient = HIWORD (lParam) ;
       // maxx = cxClient - 1 ;
       // maxy = cyClient - 1 ;
-   case WM_SETFOCUS:
+   case WM_SETFOCUS: //lint !e825  control flows into case/default
       update_timer_count(hwnd) ;
       break;
 
@@ -427,7 +393,7 @@ static LRESULT APIENTRY MainProc (HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPa
       case IDT_TIMER:
          update_timer_count(hwnd) ;
          break;
-      }
+      }  //lint !e744  switch with no default
       break;
 
    case WM_USER:
@@ -473,7 +439,7 @@ static LRESULT APIENTRY MainProc (HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPa
       //    ShowWindow (hwnd, SW_SHOWNORMAL);
       //    SetForegroundWindow (hwnd);
       //    break;
-      }
+      }  //lint !e744  switch with no default
       break;
 
    case WM_COMMAND:
@@ -530,13 +496,14 @@ static LRESULT APIENTRY MainProc (HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPa
             DestroyWindow (hwnd);
             return 1;
 
-         }  // switch (LOWORD (wParam))
+         }  //lint !e744 switch (LOWORD (wParam))
       }  //  if (HIWORD (wParam) == BN_CLICKED)
       break;
 
    case WM_DESTROY:
-      for (j=0; j<NUM_ELEMENTS; j++) 
+      for (j=0; j<NUM_ELEMENTS; j++) {
          delete element_list[j] ;
+      }
 
       if (timerID != 0) {
          KillTimer(hwnd, timerID) ;
@@ -606,5 +573,5 @@ int APIENTRY WinMain (HINSTANCE hInst, HINSTANCE hPrev, LPSTR line, int CmdShow)
    }
 
    return msg.wParam;
-}
+}  //lint !e715
 

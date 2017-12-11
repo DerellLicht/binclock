@@ -32,7 +32,7 @@ depend:
 #  build rules for executables                           
 #**************************************************************
 $(BINS): $(OBJS)
-	g++ $(CFLAGS) -s $^ -o $@ -lgdi32 -lcomctl32
+	g++ $(CFLAGS) -s $^ -o $@ -lgdi32 
 
 #**************************************************************
 #  build rules for libraries and other components
